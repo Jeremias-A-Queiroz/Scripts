@@ -1,0 +1,427 @@
+#+TITLE: Configs
+
+ - Tangle a single block with =C-u C-c C-v t=
+ - Tangle all blocks with =C-v C-c t=
+
+#+name: secret
+#+begin_src emacs-lisp :var name="", fld=""
+(if (string-equal fld "password")
+    (password-store-get name)
+  (password-store-get-field name fld))
+#+end_src
+
+* tmux
+#+begin_src bash :noweb tangle :tangle ~/.tmux.conf
+# start window numbering at 1 for easier switching
+set -g base-index 1
+
+# colors
+set -g default-terminal "screen-256color"
+
+# Need that longer tmux display time
+set -g display-panes-time 2000
+
+# status bar config
+set -g status-left "#h:[#S]"
+set -g status-left-length 50
+set -g status-right-length 100
+if-shell "uname | grep -q Darwin" "set -g status-right \"#[fg=white] ⚡#[fg=yellow] #(battery) #[fg=white][✉#(curl icanhazip.com)] %H:%M %d-%h-%Y\""
+setw -g window-status-current-format "|#I:#W|"
+
+...
+#+end_src
+
+
+* mopidy
+#+begin_src conf :noweb tangle  :tangle  ~/.config/mopidy/mopidy.conf
+[mpd]
+enabled = true
+hostname = 127.0.0.1
+port = 6600
+password =
+max_connections = 20
+connection_timeout = 60
+zeroconf = Mopidy MPD server on $hostname
+
+[gmusic]
+username = <<secret("Internet/mopidy", "Username")>>
+password = <<secret("Internet/mopidy", "password")>>
+bitrate = 320
+all_access = true
+radio_stations_in_browse = true
+radio_stations_as_playlists = true
+refresh_token = <<secret("Internet/mopidy", "RefreshToken")>>
+#+end_src
+
+** etc...
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# for examples
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# don't put duplicate lines or lines starting with space in the history.
+# See bash(1) for more options
+HISTCONTROL=ignoreboth
+
+# append to the history file, don't overwrite it
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+
+# If set, the pattern "**" used in a pathname expansion context will
+# match all files and zero or more directories and subdirectories.
+#shopt -s globstar
+
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# set a fancy prompt (non-color, unless we know we "want" color)
+case "$TERM" in
+    xterm-color) color_prompt=yes;;
+esac
+
+# uncomment for a colored prompt, if the terminal has the capability; turned
+# off by default to not distract the user: the focus in a terminal window
+# should be on the output of commands, not on the prompt
+force_color_prompt=yes
+
+if [ -n "$force_color_prompt" ]; then
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+	# We have color support; assume it's compliant with Ecma-48
+	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+	# a case would tend to support setf rather than setaf.)
+	color_prompt=yes
+    else
+	color_prompt=
+    fi
+fi
+
+if [ "$color_prompt" = yes ]; then
+    # Prompt colorido original do Ubuntu 
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+    # Prompt personalisado
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[00;32m\]┌─[\[\033[00;31m\]\u\[\033[00m\]@\[\033[01;34m\]\h\[\033[00;32m\]]──[\[\033[01;33m\]\A\[\033[00;32m\]]──[\[\033[00m\]\w\[\033[00;32m\]]\n└─[\!]─>\$\[\033[00;32m\] '
+else
+    # Prompt não colorido original do ubuntu
+    #PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+    # Prompt personalisado
+    PS1='${debian_chroot:+($debian_chroot)}┌─[\u@\h]──[\A]──[\w]\n└─[\!]─>\$ '
+fi
+unset color_prompt force_color_prompt
+
+# If this is an xterm set the title to user@host:dir
+case "$TERM" in
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+*)
+    ;;
+esac
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# some more ls aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+alias audiosync='pactl suspend-sink 1 && pactl suspend-sink 0'
+
+alias emacs='emacsclient -nw'
+alias emacs-std='/data/data/com.termux/files/usr/bin/emacs'
+
+
+# Add an "alert" alias for long running commands.  Use like so:
+#   sleep 10; alert
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+	. /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+	. /etc/bash_completion
+    fi
+fi
+
+alias console_terminal='sudo screen /dev/ttyUSB0' 
+
+## --- Formato do histórico
+HISTTIMEFORMAT="%d/%m/%Y - %T => "
+
+## --- Editor de texto padrao
+EDITOR=/usr/bin/vim
+VISUAL=/usr/bin/vim
+#VISUAL=emacsclient
+#EDITOR=emacsclient
+export VISUAL EDITOR
+
+## --- Links Danica
+
+DanBl1=200.178.116.114
+DanBH1=200.216.250.90
+DanGo1=200.231.112.210
+DanJb1=201.30.152.2
+DanJb2=200.164.219.186
+DanJv1=189.22.25.148
+DanJv2=189.22.25.154
+DanJd1=189.16.9.34
+DanLc1=177.6.252.194
+DanPa1=201.72.248.3
+DanRj1=200.223.212.210
+DanSp1=200.213.160.2
+DanSp2=187.63.137.158
+DanTb1=191.36.172.154
+DanTb2=200.241.191.194
+
+## --- Servers Nova Motores
+
+NovPrx=192.168.1.203
+NovDB1=192.168.1.29
+NovDB2=192.168.1.32
+NovZbx=192.168.1.28
+NovFw=10.180.100.1
+NovTst=192.168.1.231
+
+## --- Ajudas de comandos
+
+function ajuda () {
+	NCAT="
+	Para ouvir uma porta utilize o comando:
+	ncat -vv -l -k -p XXX
+
+	Por exemplo:
+	ncat -vv -l -k -p 80
+
+	Pode-se utilizar com o nohup para manter a porta aberta e deslogar
+	"
+
+	if [ $1 = "ouvirporta" ]
+	then
+		echo "$NCAT"
+
+	fi
+}
+
+function procurapalavra () { 
+	PALAVRA=$1
+	find ./* -type f -exec grep -l $PALAVRA {} \; 
+}
+
+
+# Instalacao das Funcoes ZZ (www.funcoeszz.net)
+#source /usr/bin/funcoeszz
+#export ZZPATH=/usr/bin/funcoeszz
+alias ic="ibmcloud"
+
+* bashrc
+#+begin_src bash :noweb tangle :tangle ~/.bashRC
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# for examples
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# don't put duplicate lines or lines starting with space in the history.
+# See bash(1) for more options
+HISTCONTROL=ignoreboth
+
+# append to the history file, don't overwrite it
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+
+# If set, the pattern "**" used in a pathname expansion context will
+# match all files and zero or more directories and subdirectories.
+#shopt -s globstar
+
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# set a fancy prompt (non-color, unless we know we "want" color)
+case "$TERM" in
+    xterm-color) color_prompt=yes;;
+esac
+
+# uncomment for a colored prompt, if the terminal has the capability; turned
+# off by default to not distract the user: the focus in a terminal window
+# should be on the output of commands, not on the prompt
+force_color_prompt=yes
+
+if [ -n "$force_color_prompt" ]; then
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+	# We have color support; assume it's compliant with Ecma-48
+	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+	# a case would tend to support setf rather than setaf.)
+	color_prompt=yes
+    else
+	color_prompt=
+    fi
+fi
+
+if [ "$color_prompt" = yes ]; then
+    # Prompt colorido original do Ubuntu 
+    #PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+    # Prompt personalisado
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[00;32m\]┌─[\[\033[00;31m\]\u\[\033[00m\]@\[\033[01;34m\]\h\[\033[00;32m\]]──[\[\033[01;33m\]\A\[\033[00;32m\]]──[\[\033[00m\]\w\[\033[00;32m\]]\n└─[\!]─>\$\[\033[00;32m\] '
+else
+    # Prompt não colorido original do ubuntu
+    #PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+    # Prompt personalisado
+    PS1='${debian_chroot:+($debian_chroot)}┌─[\u@\h]──[\A]──[\w]\n└─[\!]─>\$ '
+fi
+unset color_prompt force_color_prompt
+
+# If this is an xterm set the title to user@host:dir
+case "$TERM" in
+xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+*)
+    ;;
+esac
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# some more ls aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+alias audiosync='pactl suspend-sink 1 && pactl suspend-sink 0'
+
+alias emacs='emacsclient -nw'
+alias emacs-std='/data/data/com.termux/files/usr/bin/emacs'
+
+
+# Add an "alert" alias for long running commands.  Use like so:
+#   sleep 10; alert
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# ~/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+	. /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+	. /etc/bash_completion
+    fi
+fi
+
+alias console_terminal='sudo screen /dev/ttyUSB0' 
+
+## --- Formato do histórico
+HISTTIMEFORMAT="%d/%m/%Y - %T => "
+
+## --- Editor de texto padrao
+EDITOR=/usr/bin/vim
+VISUAL=/usr/bin/vim
+#VISUAL=emacsclient
+#EDITOR=emacsclient
+export VISUAL EDITOR
+
+## --- Ajudas de comandos
+
+function ajuda () {
+	NCAT="
+	Para ouvir uma porta utilize o comando:
+	ncat -vv -l -k -p XXX
+
+	Por exemplo:
+	ncat -vv -l -k -p 80
+
+	Pode-se utilizar com o nohup para manter a porta aberta e deslogar
+	"
+
+	if [ $1 = "ouvirporta" ]
+	then
+		echo "$NCAT"
+
+	fi
+}
+
+function procurapalavra () { 
+	PALAVRA=$1
+	find ./* -type f -exec grep -l $PALAVRA {} \; 
+}
+
+
+# Instalacao das Funcoes ZZ (www.funcoeszz.net)
+#source /usr/bin/funcoeszz
+#export ZZPATH=/usr/bin/funcoeszz
+alias ic="ibmcloud"
+
+...
+#+end_src
